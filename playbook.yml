@@ -1,0 +1,77 @@
+---
+  - name: Install and build Dockerfile
+    hosts: clients
+    
+    tasks:
+    - name: Include variables from config.yaml
+      include_vars:
+        file: config.yaml
+
+    - name: Install Docker dependencies for Ubuntu
+      include_role:
+        name: package_ubuntu
+      vars:
+        url: ""
+        repo: ""
+        filename: ""
+        package:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+          - python3
+          - python3-pip
+        service: ""
+      when: ansible_facts['distribution'] == 'Ubuntu' 
+
+    - name: Install Docker for Ubuntu
+      include_role:
+        name: package_ubuntu
+      vars:
+        url: "https://download.docker.com/linux/ubuntu/gpg"
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+        filename: "docker-ce"
+        package:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io 
+        service: docker
+      when: ansible_facts['distribution'] == 'Ubuntu'
+
+    - name: Install Docker for Centos
+      include_role:
+        name: package_centos
+      vars:
+        src: "{{ docker_repo }}"
+        dest: "/etc/yum.repos.d/docker-ce.repo"
+        package:
+          - docker-ce
+          - python3
+          - python3-pip
+        service: docker
+      when: ansible_facts['distribution'] == 'CentOS'
+    
+    - name: Stop firewall in Ubuntu
+      include_role:
+        name: firewall_ubuntu
+      when: ansible_facts['distribution'] == 'Ubuntu'  
+
+    - name: Stop firewall in Centos
+      include_role:
+        name: firewall_centos
+      when: ansible_facts['distribution'] == 'CentOS'
+
+    - name: Pip install docker
+      include_role:
+        name: pip_installer
+      vars:
+        pippackage: docker
+    
+    - name: Add user to docker group
+      include_role:
+        name: docker
+
+    - name: Build and run LAMP stack using lampstackdocker role
+      include_role:
+        name: lamp_docker
